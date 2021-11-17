@@ -19,20 +19,6 @@ python main.py ems-transposenet train models/backbones/efficient-net-b0.pth /pat
   
   To run on cambridge, you will need to change the configuration file to ```CambridgeLandmarks_config.json``` for initial training and ```CambridgeLandmarks_finetune_config.json``` for fine-tuning (see details in our paper). 
   
-  In order to test your model, for example on the fire scene from the 7Scenes dataset:
-  ```
-  python main.py ems-transposenet test /./models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/abs_7scenes_pose.csv_fire_test.csv 7Scenes_config.json --checkpoint_path <path to your checkpoint .pth>
-  ```
- ### Citation 
- If you find this repository useful, please consider giving a star and citation:
-```
-@article{Shavit21,
-  title={Learning Multi-Scene Absolute Pose Regression with Transformers},
-  author={Shavit, Yoli and Ferens, Ron and Keller, Yosi},
-  journal={arXiv preprint arXiv:2103.11468},
-  year={2021}
-}
-  
   
   
   
