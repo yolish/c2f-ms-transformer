@@ -33,13 +33,14 @@ class C2FCameraPoseDataset(CameraPoseDataset):
 
                 kmeans_position = KMeans(n_clusters=num_position_clusters, random_state=random_state).fit(scene_positions)
 
-                filename = labels_file + 'scene_{}_position_{}_classes.sav'.format(self.scenes[i], num_position_clusters)
+                filename = labels_file + '_scene_{}_position_{}_classes.sav'.format(self.scenes[locs][0], num_position_clusters)
+                print(filename)
                 joblib.dump(kmeans_position, filename)
 
             else:
                 kmeans_position = joblib.load(kmeans_position_file)
 
-            self.position_centroids[i] = kmeans_position.cluster_centers_
+            self.position_centroids[i] = kmeans_position.cluster_centers_.astype(np.float32)
             self.position_cluster_ids[locs] = kmeans_position.predict(self.poses[locs, :3]).astype(np.int)
 
     def __len__(self):
@@ -53,7 +54,7 @@ class C2FCameraPoseDataset(CameraPoseDataset):
 
         img = imread(self.img_paths[idx])
         pose = self.poses[idx]
-        cluster_id = self.position_cluster_ids[idx]
+        cluster_id = int(self.position_cluster_ids[idx])
         scene = self.scenes_ids[idx]
         centroids = self.position_centroids[scene]
 

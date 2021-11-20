@@ -14,6 +14,53 @@ from models.pose_losses import CameraPoseLoss
 from models.pose_regressors import get_model
 from os.path import join
 
+def test(args, config, model, apply_c2f, num_clusters):
+    model.eval()
+
+    # Set the dataset and data loader
+    transform = utils.test_transforms.get('baseline')
+    if apply_c2f:
+        dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, False, num_clusters,
+                                       args.cluster_predictor)
+    else:
+        dataset = CameraPoseDataset(args.dataset_path, args.labels_file, transform, False)
+    loader_params = {'batch_size': 1,
+                     'shuffle': False,
+                     'num_workers': config.get('n_workers')}
+    dataloader = torch.utils.data.DataLoader(dataset, **loader_params)
+
+    stats = np.zeros((len(dataloader.dataset), 3))
+
+    with torch.no_grad():
+        for i, minibatch in enumerate(dataloader, 0):
+            for k, v in minibatch.items():
+                minibatch[k] = v.to(device)
+            minibatch['scene'] = None  # avoid using ground-truth scene during prediction
+
+            gt_pose = minibatch.get('pose').to(dtype=torch.float32)
+
+            # Forward pass to predict the pose
+            tic = time.time()
+            est_pose = model(minibatch).get('pose')
+            toc = time.time()
+
+            # Evaluate error
+            posit_err, orient_err = utils.pose_err(est_pose, gt_pose)
+
+            # Collect statistics
+            stats[i, 0] = posit_err.item()
+            stats[i, 1] = orient_err.item()
+            stats[i, 2] = (toc - tic) * 1000
+
+            logging.info("Pose error: {:.3f}[m], {:.3f}[deg], inferred in {:.2f}[ms]".format(
+                stats[i, 0], stats[i, 1], stats[i, 2]))
+
+    # Record overall statistics
+    logging.info("Performance of {} on {}".format(args.checkpoint_path, args.labels_file))
+    logging.info("Median pose error: {:.3f}[m], {:.3f}[deg]".format(np.nanmedian(stats[:, 0]),
+                                                                    np.nanmedian(stats[:, 1])))
+    logging.info("Mean inference time:{:.2f}[ms]".format(np.mean(stats[:, 2])))
+    return stats
 
 
 if __name__ == "__main__":
@@ -29,6 +76,8 @@ if __name__ == "__main__":
                             help="path to a pre-trained model (should match the model indicated in model_name")
     arg_parser.add_argument("--experiment", help="a short string to describe the experiment/commit used")
     arg_parser.add_argument("--cluster_predictor", help="path to position k-means predictor")
+    arg_parser.add_argument("--test_dataset_id", default=None, help="test set id for testing on all scenes, options: 7scene OR cambridge")
+
 
     args = arg_parser.parse_args()
     utils.init_logger()
@@ -70,7 +119,12 @@ if __name__ == "__main__":
     model = get_model(args.model_name, args.backbone_path, config).to(device)
     # Load the checkpoint if needed
     if args.checkpoint_path:
-        model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id))
+        if config.get("freeze") and apply_c2f:
+            msg = model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id), strict=False)
+            logging.info(msg)
+        else:
+            model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id))
+
         logging.info("Initializing from checkpoint: {}".format(args.checkpoint_path))
 
     if args.mode == 'train':
@@ -162,7 +216,10 @@ if __name__ == "__main__":
 
                 # Forward pass to estimate the pose
                 if freeze:
-                    res = model.forward_heads(transformers_res)
+                    if apply_c2f:
+                        res = model.forward_heads(transformers_res, minibatch)
+                    else:
+                        res = model.forward_heads(transformers_res)
                 else:
                     res = model(minibatch)
 
@@ -212,51 +269,33 @@ if __name__ == "__main__":
         utils.plot_loss_func(sample_count, loss_vals, loss_fig_path)
 
     else: # Test
-        # Set to eval mode
-        model.eval()
+        if args.test_dataset_id is not None:
+            f = open("{}_{}_report.csv".format(args.test_dataset_id,  utils.get_stamp_from_log()), 'w')
+            f.write("scene,pos,ori\n")
+            if args.test_dataset_id == "7scenes":
+                scenes = ["chess", "fire", "heads", "office", "pumpkin", "redkitchen", "stairs"]
+                for scene in scenes:
+                    args.cluster_predictor = "./datasets/7Scenes/7scenes_all_scenes.csv_scene_{}_position_{}_classes.sav".format(scene, num_clusters)
+                    args.labels_file = "./datasets/7Scenes/abs_7scenes_pose.csv_{}_test.csv".format(scene)
+                    stats = test(args, config, model, apply_c2f, num_clusters)
+                    f.write("{},{:.3f},{:.3f}\n".format(scene, np.nanmedian(stats[:, 0]),
+                                                                                    np.nanmedian(stats[:, 1])))
+            elif args.test_dataset_id == "cambridge":
 
-        # Set the dataset and data loader
-        transform = utils.test_transforms.get('baseline')
-        if apply_c2f:
-            dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, False, num_clusters, args.cluster_predictor)
+                scenes = ["KingsCollege", "OldHospital", "ShopFacade", "StMarysChurch"]
+                for scene in scenes:
+                    args.cluster_predictor = "./datasets/CambridgeLandmarks/cambridge_four_scenes.csv_scene_{}_position_{}_classes.sav".format(scene, num_clusters)
+                    args.labels_file = "./datasets/CambridgeLandmarks/abs_cambridge_pose_sorted.csv_{}_test.csv".format(scene)
+                    stats = test(args, config, model, apply_c2f, num_clusters)
+                    f.write("{},{:.3f},{:.3f}\n".format(scene, np.nanmedian(stats[:, 0]),
+                                                                                    np.nanmedian(stats[:, 1])))
+            else:
+                raise NotImplementedError()
+            f.close()
         else:
-            dataset = CameraPoseDataset(args.dataset_path, args.labels_file, transform, False)
-        loader_params = {'batch_size': 1,
-                         'shuffle': False,
-                         'num_workers': config.get('n_workers')}
-        dataloader = torch.utils.data.DataLoader(dataset, **loader_params)
+            _ = test(args, config, model, apply_c2f, num_clusters)
 
-        stats = np.zeros((len(dataloader.dataset), 3))
 
-        with torch.no_grad():
-            for i, minibatch in enumerate(dataloader, 0):
-                for k, v in minibatch.items():
-                    minibatch[k] = v.to(device)
-                gt_scene = minibatch.get('scene')
-                minibatch['scene'] = None # avoid using ground-truth scene during prediction
-
-                gt_pose = minibatch.get('pose').to(dtype=torch.float32)
-
-                # Forward pass to predict the pose
-                tic = time.time()
-                est_pose = model(minibatch).get('pose')
-                toc = time.time()
-
-                # Evaluate error
-                posit_err, orient_err = utils.pose_err(est_pose, gt_pose)
-
-                # Collect statistics
-                stats[i, 0] = posit_err.item()
-                stats[i, 1] = orient_err.item()
-                stats[i, 2] = (toc - tic)*1000
-
-                logging.info("Pose error: {:.3f}[m], {:.3f}[deg], inferred in {:.2f}[ms]".format(
-                    stats[i, 0],  stats[i, 1],  stats[i, 2]))
-
-        # Record overall statistics
-        logging.info("Performance of {} on {}".format(args.checkpoint_path, args.labels_file))
-        logging.info("Median pose error: {:.3f}[m], {:.3f}[deg]".format(np.nanmedian(stats[:, 0]), np.nanmedian(stats[:, 1])))
-        logging.info("Mean inference time:{:.2f}[ms]".format(np.mean(stats[:, 2])))
 
 
 

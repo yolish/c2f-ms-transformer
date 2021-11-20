@@ -5,7 +5,7 @@
 		"n_workers": 4,
 		"device_id": "cuda:0"
 	},
-	"ems-transposenet":
+	"c2f-ems-transposenet":
 	{
 		"batch_size": 8,
         "equalize_scenes": false,

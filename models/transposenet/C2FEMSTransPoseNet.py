@@ -39,6 +39,7 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
         decoder_dim = self.transformer_t.d_model
         self.regressor_head_t = PoseRegressor(decoder_dim, 3)
         self.regressor_head_rot = PoseRegressor(decoder_dim, 4)
+        self.t_cluster_embed = torch.nn.Linear(decoder_dim, 1)
 
     def forward_heads(self, transformers_res, data):
         """
@@ -60,7 +61,7 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
         # predict position cluster and residual
         t_cluster_log_distr = self.log_softmax(
             self.t_cluster_embed(global_desc_t))
-        t_residuals = self.self.regressor_head_t(global_desc_t)
+        t_residuals = self.regressor_head_t(global_desc_t)
 
         # Regress the pose
         x_t = add_residuals(t_cluster_log_distr, centroids,

@@ -1,6 +1,7 @@
 from .posenet.PoseNet import PoseNet
 from .transposenet.EMSTransPoseNet import EMSTransPoseNet
 from  .transposenet.MSTransPoseNet import MSTransPoseNet
+from .transposenet.C2FEMSTransPoseNet import C2FEMSTransPoseNet
 
 def get_model(model_name, backbone_path, config):
     """
@@ -16,5 +17,7 @@ def get_model(model_name, backbone_path, config):
         return MSTransPoseNet(config, backbone_path)
     elif model_name == 'ems-transposenet':
         return EMSTransPoseNet(config, backbone_path)
+    elif model_name == 'c2f-ems-transposenet':
+        return C2FEMSTransPoseNet(config, backbone_path)
     else:
         raise "{} not supported".format(model_name)
