@@ -1,0 +1,73 @@
+{
+  "general": {
+		"n_freq_print": 5,
+		"n_freq_checkpoint": 10,
+		"n_workers": 4,
+		"device_id": "cuda:0"
+	},
+   "freeze-c2f-ems-transposenet": {
+    "batch_size": 8,
+    "equalize_scenes": false,
+    "num_scenes": 7,
+    "learnable": true,
+    "s_x": 0.0,
+    "s_q": -3.0,
+    "lr": 1e-4,
+    "norm": 2,
+    "weight_decay": 1e-4,
+    "eps": 1e-10,
+    "lr_scheduler_gamma": 0.1,
+    "lr_scheduler_step_size": 10,
+    "n_epochs": 30,
+    "num_t_encoder_layers": 6,
+    "num_t_decoder_layers": 6,
+    "num_rot_encoder_layers": 6,
+    "num_rot_decoder_layers": 6,
+    "dim_feedforward": 256,
+    "hidden_dim": 256,
+    "dropout": 0.1,
+    "nheads": 4,
+    "reduction": [
+      "reduction_4",
+      "reduction_3"
+    ],
+    "c2f": true,
+		"nclusters_position": 4,
+		"nclusters_orientation": 4,
+    "freeze": true,
+    "freeze_exclude_phrase": ["regressor_head_rot", "regressor_head_t", "t_cluster_embed", "rot_cluster_embed"]
+  },
+  "c2f-ems-transposenet": {
+    "batch_size": 8,
+    "equalize_scenes": false,
+    "num_scenes": 7,
+    "learnable": true,
+    "s_x": 0.0,
+    "s_q": -3.0,
+    "lr": 1e-4,
+    "norm": 2,
+    "weight_decay": 1e-4,
+    "eps": 1e-10,
+    "lr_scheduler_gamma": 0.1,
+    "lr_scheduler_step_size": 10,
+    "n_epochs": 60,
+    "num_t_encoder_layers": 6,
+    "num_t_decoder_layers": 6,
+    "num_rot_encoder_layers": 6,
+    "num_rot_decoder_layers": 6,
+    "dim_feedforward": 256,
+    "hidden_dim": 256,
+    "dropout": 0.1,
+    "nheads": 4,
+    "reduction": [
+      "reduction_4",
+      "reduction_3"
+    ],
+    "c2f": true,
+		"nclusters_position": 1,
+		"nclusters_orientation": 2,
+    "freeze": false,
+    "freeze_exclude_phrase": ["regressor_head_rot", "regressor_head_t", "t_cluster_embed", "rot_cluster_embed"]
+  }
+
+}

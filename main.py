@@ -14,14 +14,14 @@ from models.pose_losses import CameraPoseLoss
 from models.pose_regressors import get_model
 from os.path import join
 
-def test(args, config, model, apply_c2f, num_clusters):
+def test(args, config, model, apply_c2f, num_clusters_position, num_clusters_orientation):
     model.eval()
 
     # Set the dataset and data loader
     transform = utils.test_transforms.get('baseline')
     if apply_c2f:
-        dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, False, num_clusters,
-                                       args.cluster_predictor)
+        dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, False, num_clusters_position, num_clusters_orientation,
+                                       args.cluster_predictor_position, args.cluster_predictor_orientation)
     else:
         dataset = CameraPoseDataset(args.dataset_path, args.labels_file, transform, False)
     loader_params = {'batch_size': 1,
@@ -36,6 +36,9 @@ def test(args, config, model, apply_c2f, num_clusters):
             for k, v in minibatch.items():
                 minibatch[k] = v.to(device)
             minibatch['scene'] = None  # avoid using ground-truth scene during prediction
+            minibatch['cluster_id_position'] = None  # avoid using ground-truth cluster during prediction
+            minibatch['cluster_id_orientation'] = None  # avoid using ground-truth cluster during prediction
+
 
             gt_pose = minibatch.get('pose').to(dtype=torch.float32)
 
@@ -75,7 +78,9 @@ if __name__ == "__main__":
     arg_parser.add_argument("--checkpoint_path",
                             help="path to a pre-trained model (should match the model indicated in model_name")
     arg_parser.add_argument("--experiment", help="a short string to describe the experiment/commit used")
-    arg_parser.add_argument("--cluster_predictor", help="path to position k-means predictor")
+    arg_parser.add_argument("--cluster_predictor_position", help="path to position k-means predictor")
+    arg_parser.add_argument("--cluster_predictor_orientation", help="path to orientation k-means predictor")
+
     arg_parser.add_argument("--test_dataset_id", default=None, help="test set id for testing on all scenes, options: 7scene OR cambridge")
 
 
@@ -113,18 +118,16 @@ if __name__ == "__main__":
 
     # Coarse-to-fine params
     apply_c2f = config.get("c2f")
-    num_clusters = config.get("nclusters")
+    num_clusters_position = config.get("nclusters_position")
+    num_clusters_orientation = config.get("nclusters_orientation")
 
     # Create the model
     model = get_model(args.model_name, args.backbone_path, config).to(device)
     # Load the checkpoint if needed
     if args.checkpoint_path:
-        if config.get("freeze") and apply_c2f:
-            msg = model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id), strict=False)
-            logging.info(msg)
-        else:
-            model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id))
 
+        msg = model.load_state_dict(torch.load(args.checkpoint_path, map_location=device_id), strict=False)
+        logging.info(msg)
         logging.info("Initializing from checkpoint: {}".format(args.checkpoint_path))
 
     if args.mode == 'train':
@@ -145,6 +148,7 @@ if __name__ == "__main__":
                         break
                 if freeze_param:
                         parameter.requires_grad_(False)
+
 
         # Set the loss
         pose_loss = CameraPoseLoss(config).to(device)
@@ -170,7 +174,9 @@ if __name__ == "__main__":
 
         equalize_scenes = config.get("equalize_scenes")
         if apply_c2f:
-            dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, equalize_scenes, num_clusters, args.cluster_predictor)
+            dataset = C2FCameraPoseDataset(args.dataset_path, args.labels_file, transform, equalize_scenes,
+                                           num_clusters_position, num_clusters_orientation, args.cluster_predictor_position,
+                                           args.cluster_predictor_orientation)
         else:
             dataset = CameraPoseDataset(args.dataset_path, args.labels_file, transform, equalize_scenes)
 
@@ -200,7 +206,9 @@ if __name__ == "__main__":
                     minibatch[k] = v.to(device)
                 gt_pose = minibatch.get('pose').to(dtype=torch.float32)
                 gt_scene = minibatch.get('scene').to(device)
-                gt_cluster = minibatch.get('cluster_id').to(device)
+                position_gt_cluster = minibatch.get('position_cluster_id').to(device)
+                orientation_gt_cluster = minibatch.get('orientation_cluster_id').to(device)
+
                 batch_size = gt_pose.shape[0]
                 n_samples += batch_size
                 n_total_samples += batch_size
@@ -225,12 +233,14 @@ if __name__ == "__main__":
 
                 est_pose = res.get('pose')
                 est_scene_log_distr = res.get('scene_log_distr')
-                est_cluster_log_distr = res.get('cluster_log_distr')
+                est_position_cluster_log_distr = res.get('position_cluster_log_distr')
+                est_orientation_cluster_log_distr = res.get('orientation_cluster_log_distr')
+
                 if est_scene_log_distr is not None:
                     # Pose Loss + Scene Loss
-                    if est_cluster_log_distr is not None:
+                    if apply_c2f:
                         criterion = pose_loss(est_pose, gt_pose) + nll_loss(est_scene_log_distr, gt_scene) \
-                                    + nll_loss(est_cluster_log_distr, gt_cluster)
+                                    + nll_loss(est_position_cluster_log_distr, position_gt_cluster) + nll_loss(est_orientation_cluster_log_distr, orientation_gt_cluster)
                     else:
                         criterion = pose_loss(est_pose, gt_pose) + nll_loss(est_scene_log_distr, gt_scene)
                 else:
@@ -275,25 +285,30 @@ if __name__ == "__main__":
             if args.test_dataset_id == "7scenes":
                 scenes = ["chess", "fire", "heads", "office", "pumpkin", "redkitchen", "stairs"]
                 for scene in scenes:
-                    args.cluster_predictor = "./datasets/7Scenes/7scenes_all_scenes.csv_scene_{}_position_{}_classes.sav".format(scene, num_clusters)
+                    args.cluster_predictor_position = "./datasets/7Scenes/7scenes_all_scenes.csv_scene_{}_position_{}_classes.sav".format(scene, num_clusters_position)
+                    args.cluster_predictor_orientation = "./datasets/7Scenes/7scenes_all_scenes.csv_scene_{}_orientation_{}_classes.sav".format(scene, num_clusters_orientation)
+
                     args.labels_file = "./datasets/7Scenes/abs_7scenes_pose.csv_{}_test.csv".format(scene)
-                    stats = test(args, config, model, apply_c2f, num_clusters)
+                    stats = test(args, config, model, apply_c2f, num_clusters_position, num_clusters_orientation)
                     f.write("{},{:.3f},{:.3f}\n".format(scene, np.nanmedian(stats[:, 0]),
                                                                                     np.nanmedian(stats[:, 1])))
             elif args.test_dataset_id == "cambridge":
 
                 scenes = ["KingsCollege", "OldHospital", "ShopFacade", "StMarysChurch"]
                 for scene in scenes:
-                    args.cluster_predictor = "./datasets/CambridgeLandmarks/cambridge_four_scenes.csv_scene_{}_position_{}_classes.sav".format(scene, num_clusters)
+                    args.cluster_predictor_position = "./datasets/CambridgeLandmarks/cambridge_four_scenes.csv_scene_{}_position_{}_classes.sav".format(
+                        scene, num_clusters_position)
+                    args.cluster_predictor_orientation = "./datasets/CambridgeLandmarks/cambridge_four_scenes.csv_scene_{}_orientation_{}_classes.sav".format(
+                        scene, num_clusters_orientation)
                     args.labels_file = "./datasets/CambridgeLandmarks/abs_cambridge_pose_sorted.csv_{}_test.csv".format(scene)
-                    stats = test(args, config, model, apply_c2f, num_clusters)
+                    stats = test(args, config, model, apply_c2f, num_clusters_position, num_clusters_orientation)
                     f.write("{},{:.3f},{:.3f}\n".format(scene, np.nanmedian(stats[:, 0]),
                                                                                     np.nanmedian(stats[:, 1])))
             else:
                 raise NotImplementedError()
             f.close()
         else:
-            _ = test(args, config, model, apply_c2f, num_clusters)
+            _ = test(args, config, model, apply_c2f, num_clusters_position, num_clusters_orientation)
 
 
 
