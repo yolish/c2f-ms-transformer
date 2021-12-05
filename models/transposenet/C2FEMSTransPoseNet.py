@@ -39,13 +39,15 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
         decoder_dim = self.transformer_t.d_model
         self.regressor_head_t = PoseRegressor(decoder_dim, 3)
         self.regressor_head_rot = PoseRegressor(decoder_dim, 4)
-        self.t_cluster_embed = torch.nn.Linear(decoder_dim, 1)
+        self.t_cluster_embed = torch.nn.Linear(decoder_dim, config.get("nclusters_position"))
+        self.rot_cluster_embed = torch.nn.Linear(decoder_dim, config.get("nclusters_orientation"))
+
 
     def forward_heads(self, transformers_res, data):
         """
         Forward pass of the MLP heads
         The forward pass execpts a dictionary with two keys-values:
-        global_desc_t: latent representation from the position encoder
+        global_desc_t: latent representation from the orientation encoder
         global_dec_rot: latent representation from the orientation encoder
         scene_log_distr: the log softmax over the scenes
         max_indices: the index of the max value in the scene distribution
@@ -54,9 +56,9 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
         global_desc_t = transformers_res.get('global_desc_t')
         global_desc_rot = transformers_res.get('global_desc_rot')
 
-        centroids = data["centroids"]
+        position_centroids = data["position_centroids"]
 
-        gt_position_cluster_ids = data.get("cluster_id") # None at Test time
+        gt_position_cluster_ids = data.get("position_cluster_id") # None at Test time
 
         # predict position cluster and residual
         t_cluster_log_distr = self.log_softmax(
@@ -64,13 +66,25 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
         t_residuals = self.regressor_head_t(global_desc_t)
 
         # Regress the pose
-        x_t = add_residuals(t_cluster_log_distr, centroids,
+        x_t = add_residuals(t_cluster_log_distr, position_centroids,
                             t_residuals, gt_indices=gt_position_cluster_ids)
 
-        x_rot = self.regressor_head_rot(global_desc_rot)
+        orientation_centroids = data["orientation_centroids"]
+
+        gt_orientation_cluster_ids = data.get("orientation_cluster_id")  # None at Test time
+
+        # predict orientation cluster and residual
+        rot_cluster_log_distr = self.log_softmax(
+            self.rot_cluster_embed(global_desc_rot))
+        rot_residuals = self.regressor_head_rot(global_desc_rot)
+
+        # Regress the pose
+        x_rot = add_residuals(rot_cluster_log_distr, orientation_centroids,
+                            rot_residuals, gt_indices=gt_orientation_cluster_ids)
+
         expected_pose = torch.cat((x_t, x_rot), dim=1)
         return {'pose':expected_pose, 'scene_log_distr':transformers_res.get('scene_log_distr'),
-                "position_cluster": t_cluster_log_distr}
+                "position_cluster_log_distr": t_cluster_log_distr, "orientation_cluster_log_distr": rot_cluster_log_distr}
 
 
     def forward(self, data):
@@ -80,7 +94,7 @@ class C2FEMSTransPoseNet(EMSTransPoseNet):
                - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels NOT USED
          'scene_indices': ground truth scene indices for each image (can be None)
 
-        returns a dictionary with the following keys-values;
+         returns a dictionary with the following keys-values;
         'pose': expected pose (NX7)
         'log_scene_distr': (log) probability distribution over scenes
         """
