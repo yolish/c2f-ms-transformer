@@ -1,6 +1,14 @@
 ## A Coarse-to-Fine Residual Prediction for Multi-Scene Pose Regression with Transformers 
-This repository extends the ICCV21 paper [Learning Multi-Scene Absolute Pose Regression with Transformers](https://arxiv.org/abs/2103.11468) with coarse-to-fine position residual regression.
+This repository extends the ICCV21 paper [Learning Multi-Scene Absolute Pose Regression with Transformers](https://arxiv.org/abs/2103.11468) with coarse-to-fine  residual regression. 
 
+### Set up 
+Please follow the instructions (prerequisites) in our the MS Transformer repository: https://github.com/yolish/multi-scene-pose-transformer 
+
+
+### Pretrained Models 
+You can download our pretrained models for the 7Scenes dataset and the Cambridge dataset, from here: [pretrained models](https://drive.google.com/drive/folders/1ehRQuCAFzTnEt4teDc6u6krDVY5SMlG9?usp=sharing) 
+
+If you would like to train our model on these dataset yourself, you will need to initialize them from the respective pretrained ms-transformer models (without residual learning), which are available from our [MS Transformer repository](https://github.com/yolish/multi-scene-pose-transformer)
 
 ### Usage
 
@@ -10,6 +18,7 @@ The entry point for training and testing is the main.py script in the root direc
   ```
   python main.py -h
   ```
+  
   For example, in order to train our model on the 7Scenes dataset run: 
   ```
 python main.py ems-transposenet train models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/7scenes_all_scenes.csv 7Scenes_config.json
@@ -23,16 +32,7 @@ python main.py ems-transposenet train models/backbones/efficient-net-b0.pth /pat
   ```
   python main.py ems-transposenet test /./models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/abs_7scenes_pose.csv_fire_test.csv 7Scenes_config.json --checkpoint_path <path to your checkpoint .pth>
   ```
- ### Citation 
- If you find this repository useful, please consider giving a star and citation:
-```
-@article{Shavit21,
-  title={Learning Multi-Scene Absolute Pose Regression with Transformers},
-  author={Shavit, Yoli and Ferens, Ron and Keller, Yosi},
-  journal={arXiv preprint arXiv:2103.11468},
-  year={2021}
-}
-  
+
   
   
   
