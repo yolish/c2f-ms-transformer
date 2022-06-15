@@ -26,11 +26,11 @@ python main.py c2f-ems-transposenet train models/backbones/efficient-net-b0.pth 
   Your checkpoints (.pth file saved based on the number you specify in the configuration file) and log file
   will be saved under an 'out' folder.
   
-  To run on cambridge, you will need to change the configuration file to ```CambridgeLandmarks_config.json``` for initial training and ```CambridgeLandmarks_finetune_config.json``` for fine-tuning (see details in our paper). 
+  To run on cambridge, you will need to change the configuration file to ```CambridgeLandmarks_config.json``` and use the respective pretrained model. 
   
   In order to test your model, for example on the fire scene from the 7Scenes dataset:
   ```
-  python main.py ems-transposenet test /./models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/abs_7scenes_pose.csv_fire_test.csv 7Scenes_config.json --checkpoint_path <path to your checkpoint .pth>
+  python main.py c2f-ems-transposenet test /./models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/abs_7scenes_pose.csv_fire_test.csv 7Scenes_config.json --checkpoint_path <path to your checkpoint .pth>
   ```
 
   
