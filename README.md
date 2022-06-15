@@ -21,7 +21,7 @@ The entry point for training and testing is the main.py script in the root direc
   
   For example, in order to train our model on the 7Scenes dataset run: 
   ```
-python main.py ems-transposenet train models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/7scenes_all_scenes.csv 7Scenes_config.json
+python main.py c2f-ems-transposenet train models/backbones/efficient-net-b0.pth /path/to/7scenes-datasets ./datasets/7Scenes/7scenes_all_scenes.csv 7scenes_config.json --checkpoint_path path/to/pretrained-ms-transformer
   ```
   Your checkpoints (.pth file saved based on the number you specify in the configuration file) and log file
   will be saved under an 'out' folder.
