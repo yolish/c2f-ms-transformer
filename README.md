@@ -8,7 +8,7 @@ Please follow the instructions (prerequisites) in our the MS Transformer reposit
 ### Pretrained Models 
 You can download our pretrained models for the 7Scenes dataset and the Cambridge dataset, from here: [pretrained models](https://drive.google.com/drive/folders/1ehRQuCAFzTnEt4teDc6u6krDVY5SMlG9?usp=sharing) 
 
-If you would like to train our model on these dataset yourself, you will need to initialize them from the respective pretrained ms-transformer models (without residual learning), which are available from our [MS Transformer repository](https://github.com/yolish/multi-scene-pose-transformer)
+If you would like to train our model on these dataset yourself, you will need to initialize them from the respective pretrained ms-transformer models (without residual learning), which are available from our [MS Transformer repository](https://github.com/yolish/multi-scene-pose-transformer). For the CambridgeLandmarks dataset please use the model before fine-tuning.
 
 ### Usage
 
