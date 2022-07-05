@@ -62,3 +62,7 @@ models/backbones/efficient-net-b0.pth
 all_config.json
 --checkpoint_path
 ms-transformer_cross_dataset.pth
+
+
+python main.py c2f-ems-transposenet test models/backbones/efficient-net-b0.pth /data/Datasets/7Scenes ./datasets/CambridgeLandmarks/abs_cambridge_pose_sorted.csv_KingsCollege_test.csv all_config.json --cluster_predictor_position ./datasets/all_scenes.csv_scene_KingsCollege_position_4_classes.sav --cluster_predictor_orientation ./datasets/all_scenes.csv_scene_KingsCollege_orientation_4_classes.sav  --checkpoint_path out/run_24_06_22_11_32_checkpoint-500.pth --test_dataset_id 7scenes
+python main.py c2f-ems-transposenet test models/backbones/efficient-net-b0.pth /mnt/data/CambridgeLandmarks/CAMBRIDGE_dataset ./datasets/CambridgeLandmarks/abs_cambridge_pose_sorted.csv_KingsCollege_test.csv all_config.json --cluster_predictor_position ./datasets/all_scenes.csv_scene_KingsCollege_position_4_classes.sav --cluster_predictor_orientation ./datasets/all_scenes.csv_scene_KingsCollege_orientation_4_classes.sav  --checkpoint_path out/run_24_06_22_11_32_checkpoint-500.pth --test_dataset_id cambridge
