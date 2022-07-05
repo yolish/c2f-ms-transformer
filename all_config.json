@@ -1,7 +1,7 @@
 {
   "general": {
 		"n_freq_print": 5,
-		"n_freq_checkpoint": 10,
+		"n_freq_checkpoint": 50,
 		"n_workers": 4,
 		"device_id": "cuda:0"
 	},
@@ -10,15 +10,15 @@
     "equalize_scenes": false,
     "num_scenes": 11,
     "learnable": true,
-    "s_x": 0.0,
-    "s_q": -3.0,
+    "s_x": -3.0,
+    "s_q": -6.5,
     "lr": 1e-4,
     "norm": 2,
     "weight_decay": 1e-4,
     "eps": 1e-10,
     "lr_scheduler_gamma": 0.1,
-    "lr_scheduler_step_size": 10,
-    "n_epochs": 60,
+    "lr_scheduler_step_size": 200,
+    "n_epochs": 600,
     "num_t_encoder_layers": 6,
     "num_t_decoder_layers": 6,
     "num_rot_encoder_layers": 6,
@@ -32,10 +32,11 @@
       "reduction_3"
     ],
     "c2f": true,
-		"nclusters_position": 1,
-		"nclusters_orientation": 2,
+		"nclusters_position": 4,
+		"nclusters_orientation": 4,
     "freeze": false,
-    "freeze_exclude_phrase": ["regressor_head_rot", "regressor_head_t", "t_cluster_embed", "rot_cluster_embed"]
+    "freeze_exclude_phrase": ["regressor_head_rot", "regressor_head_t", "t_cluster_embed", "rot_cluster_embed"],
+    "no_augment": true
   }
 
 }
